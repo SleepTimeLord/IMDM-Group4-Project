@@ -1,22 +1,18 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.LookDev;
 
 public class AIOManager : MonoBehaviour {
 	public Camera camera;
+	public Volume globalVolume;
+	public GameObject[] itemList;
+	[Header("Main Scene")]
+	public GameObject mainScene;
+	public VolumeProfile mainVp;
+	public Material mainSkybox;
 
-	public GameObject CurrentDay;
-	public GameObject SceneOne;
-	public GameObject SceneTwo;
-	public GameObject SceneThree;
-
-	public GameObject ObjectOne;
-	public GameObject ObjectTwo;
-	public GameObject ObjectThree;
-
-	private Vector3 PosOne;
-	private Vector3 PosTwo;
-	private Vector3 PosThree;
+	[SerializeField]
+	private GameObject currentScene;
 
 	private int changeFOV = 0;
 	private float r;
@@ -30,91 +26,100 @@ public class AIOManager : MonoBehaviour {
 	// 3 = whatever
 	//public static int currentlyHeld = 0;
 
-	public void drop() {
-		CurrentDay.SetActive(true);
-
-		SceneOne.SetActive(false);
-		SceneTwo.SetActive(false);
-		SceneThree.SetActive(false);
-
-		ObjectOne.SetActive(true);
-		ObjectTwo.SetActive(true);
-		ObjectThree.SetActive(true);
-
-		ObjectOne.transform.position = PosOne;
-		ObjectTwo.transform.position = PosOne;
-		ObjectThree.transform.position = PosOne;
-
-		changeFOV = 1;
-	}
-
-	public void pickupOne() {
-		Debug.Log("went to scene 1");
-		CurrentDay.SetActive(false);
-		SceneOne.SetActive(true);
-
-		ObjectTwo.SetActive(false);
-		ObjectThree.SetActive(false);
-	}
-
-	public void pickupTwo() {
-		Debug.Log("went to scene 2");
-		CurrentDay.SetActive(false);
-		SceneTwo.SetActive(true);
-
-		ObjectOne.SetActive(false);
-		ObjectThree.SetActive(false);
-	}
-
-	public void pickupThree() {
-		Debug.Log("went to scene 3");
-		CurrentDay.SetActive(false);
-		SceneThree.SetActive(true);
-
-		ObjectOne.SetActive(false);
-		ObjectTwo.SetActive(false);
-	}
-
 	void Start() {
+		itemList = GameObject.FindGameObjectsWithTag("Interactable");
+		currentScene = mainScene;
+
 		fov = camera.fieldOfView;
-		PosOne = ObjectOne.transform.position;
-		PosTwo = ObjectTwo.transform.position;
-		PosThree = ObjectThree.transform.position;
 		r = camera.GetComponent<Color>().r;
 		g = camera.GetComponent<Color>().g;
 		b = camera.GetComponent<Color>().b;
 	}
 
+	/// <summary>
+	/// basically change to this specific items scene and do whatever is done when pickup item
+	/// makes it so we can just change this one script and I dont have to keep copy and pasting
+	/// </summary>
+	public void Pickup(GameObject scene, GameObject itemGrabbing, VolumeProfile vp, Material skybox)
+	{
+		// hides the rest of the items except for the chosen item
+		foreach(GameObject item in itemList)
+		{
+			if (item == itemGrabbing) continue;
+			item.SetActive(false);
+		}
+
+		// change to scene connected to the item player is grabbing
+		SceneTransition(vp, scene, skybox);
+	}
+
+	/// <summary>
+	/// when drop item go back to the main scene and do whatever. Gets called in 
+	/// TeleportationItem.cs 
+	/// </summary>
+	public void Drop(GameObject itemDropping, Vector3 ogPos, Quaternion ogRot)
+	{
+		// put item back in its og pos and rot
+		itemDropping.transform.localPosition = ogPos;
+		itemDropping.transform.localRotation = ogRot;
+
+		// change scene to mainscene 
+		SceneTransition(mainVp, mainScene, mainSkybox);
+
+		// set active every item
+		foreach(GameObject item in itemList)
+		{
+			if (item.activeSelf) continue;
+			item.SetActive(true);
+		}
+	}
+
+	/// <summary>
+	/// transition to chosen scene
+	/// </summary>
+	private void SceneTransition(VolumeProfile vp, GameObject newScene, Material skybox)
+	{
+		// transition animation or something
+		TimeTravelTransition();
+
+		// change cur scene to newScene
+		newScene.SetActive(true);
+		currentScene.SetActive(false);
+		currentScene = newScene;
+
+		// change vp for scene
+		globalVolume.sharedProfile = vp;
+
+		// change skybox of the camera if there is a skybox
+		RenderSettings.skybox = skybox;
+	}
+
+	/// <summary>
+	/// is basically the transition when you travel to different scenes
+	/// TODO: implement this
+	/// </summary>
+	private void TimeTravelTransition()
+	{
+		changeFOV = 1;
+		// add transition distrotion or something. maybe use gobal volume for this
+		// idk its up to who wants to do this
+
+		// audio when transition idk 
+		return;	
+	}
+
 	// Update is called once per frame
 	void Update() {
-		// if (Keyboard.current.spaceKey.wasPressedThisFrame) {
-		// 	drop();
-		// 	currentlyHeld = (currentlyHeld + 1) % 4;
-		// }
-
-		// if (currentlyHeld == 0 && !CurrentDay.activeSelf) {
-		// 	drop();
-		// }
-
-		// if (currentlyHeld == 1 && !SceneOne.activeSelf) {
-		// 	pickupOne();
-		// }
-
-		// if (currentlyHeld == 2 && !SceneOne.activeSelf) {
-		// 	pickupTwo();
-		// }
-
-		// if (currentlyHeld == 3 && !SceneOne.activeSelf) {
-		// 	pickupThree();
-		// }
-
+		// TODO: maybe change idk though i think its designers choice
+		// transition method idk what we wanna do its like a 
+		// design thing tbh
 		if (changeFOV > 0) {
 			changeFOV++;
-			if (changeFOV > 512) {
+			if (changeFOV > 500) {
 				changeFOV = 0;
 				camera.fieldOfView = fov;
 			} else {
-				camera.fieldOfView += 1;
+				camera.fieldOfView += 0.1f;
 			}
 		}
 	}
